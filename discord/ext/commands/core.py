@@ -65,6 +65,9 @@ __all__ = (
     'bot_has_guild_permissions'
 )
 
+from ... import Permissions
+
+
 def wrap_callback(coro):
     @functools.wraps(coro)
     async def wrapped(*args, **kwargs):
@@ -1427,7 +1430,7 @@ def group(name: str =None, **attrs):
     attrs.setdefault('cls', Group)
     return command(name=name, **attrs)
 
-def check(predicate):
+def check(predicate: Callable[[Context], bool]) -> Callable[[Context], Command]:
     r"""A decorator that adds a check to the :class:`.Command` or its
     subclasses. These checks could be accessed via :attr:`.Command.checks`.
 
@@ -1587,7 +1590,7 @@ def check_any(*checks):
 
     return check(predicate)
 
-def has_role(item):
+def has_role(item: Union[int, str]):
     """A :func:`.check` that is added that checks if the member invoking the
     command has the role specified via the name or ID specified.
 
@@ -1614,7 +1617,7 @@ def has_role(item):
         The name or ID of the role to check.
     """
 
-    def predicate(ctx):
+    def predicate(ctx: Context):
         if not isinstance(ctx.channel, discord.abc.GuildChannel):
             raise NoPrivateMessage()
 
@@ -1628,7 +1631,7 @@ def has_role(item):
 
     return check(predicate)
 
-def has_any_role(*items):
+def has_any_role(*items: List[Union[str, int]]):
     r"""A :func:`.check` that is added that checks if the member invoking the
     command has **any** of the roles specified. This means that if they have
     one out of the three roles specified, then this check will return `True`.
@@ -1659,7 +1662,7 @@ def has_any_role(*items):
         async def cool(ctx):
             await ctx.send('You are cool indeed')
     """
-    def predicate(ctx):
+    def predicate(ctx: Context):
         if not isinstance(ctx.channel, discord.abc.GuildChannel):
             raise NoPrivateMessage()
 
@@ -1670,7 +1673,7 @@ def has_any_role(*items):
 
     return check(predicate)
 
-def bot_has_role(item):
+def bot_has_role(item: Union[str, int]):
     """Similar to :func:`.has_role` except checks if the bot itself has the
     role.
 
@@ -1684,7 +1687,7 @@ def bot_has_role(item):
         instead of generic :exc:`.CheckFailure`
     """
 
-    def predicate(ctx):
+    def predicate(ctx: Context):
         ch = ctx.channel
         if not isinstance(ch, discord.abc.GuildChannel):
             raise NoPrivateMessage()
@@ -1699,7 +1702,7 @@ def bot_has_role(item):
         return True
     return check(predicate)
 
-def bot_has_any_role(*items):
+def bot_has_any_role(*items: List[Union[str, int]]):
     """Similar to :func:`.has_any_role` except checks if the bot itself has
     any of the roles listed.
 
@@ -1724,7 +1727,7 @@ def bot_has_any_role(*items):
         raise BotMissingAnyRole(items)
     return check(predicate)
 
-def has_permissions(**perms):
+def has_permissions(**perms: List[Permissions]):
     """A :func:`.check` that is added that checks if the member has all of
     the permissions necessary.
 
@@ -1758,7 +1761,7 @@ def has_permissions(**perms):
     if invalid:
         raise TypeError('Invalid permission(s): %s' % (', '.join(invalid)))
 
-    def predicate(ctx):
+    def predicate(ctx: Context):
         ch = ctx.channel
         permissions = ch.permissions_for(ctx.author)
 
@@ -1771,7 +1774,7 @@ def has_permissions(**perms):
 
     return check(predicate)
 
-def bot_has_permissions(**perms):
+def bot_has_permissions(**perms: List[Permissions]):
     """Similar to :func:`.has_permissions` except checks if the bot itself has
     the permissions listed.
 
@@ -1783,7 +1786,7 @@ def bot_has_permissions(**perms):
     if invalid:
         raise TypeError('Invalid permission(s): %s' % (', '.join(invalid)))
 
-    def predicate(ctx):
+    def predicate(ctx: Context):
         guild = ctx.guild
         me = guild.me if guild is not None else ctx.bot.user
         permissions = ctx.channel.permissions_for(me)
@@ -1797,7 +1800,7 @@ def bot_has_permissions(**perms):
 
     return check(predicate)
 
-def has_guild_permissions(**perms):
+def has_guild_permissions(**perms: List[Permissions]):
     """Similar to :func:`.has_permissions`, but operates on guild wide
     permissions instead of the current channel permissions.
 
@@ -1811,7 +1814,7 @@ def has_guild_permissions(**perms):
     if invalid:
         raise TypeError('Invalid permission(s): %s' % (', '.join(invalid)))
 
-    def predicate(ctx):
+    def predicate(ctx: Context):
         if not ctx.guild:
             raise NoPrivateMessage
 
@@ -1825,7 +1828,7 @@ def has_guild_permissions(**perms):
 
     return check(predicate)
 
-def bot_has_guild_permissions(**perms):
+def bot_has_guild_permissions(**perms: List[Permissions]):
     """Similar to :func:`.has_guild_permissions`, but checks the bot
     members guild permissions.
 
@@ -1836,7 +1839,7 @@ def bot_has_guild_permissions(**perms):
     if invalid:
         raise TypeError('Invalid permission(s): %s' % (', '.join(invalid)))
 
-    def predicate(ctx):
+    def predicate(ctx: Context):
         if not ctx.guild:
             raise NoPrivateMessage
 
@@ -1861,7 +1864,7 @@ def dm_only():
     .. versionadded:: 1.1
     """
 
-    def predicate(ctx):
+    def predicate(ctx: Context):
         if ctx.guild is not None:
             raise PrivateMessageOnly()
         return True
@@ -1877,7 +1880,7 @@ def guild_only():
     that is inherited from :exc:`.CheckFailure`.
     """
 
-    def predicate(ctx):
+    def predicate(ctx: Context):
         if ctx.guild is None:
             raise NoPrivateMessage()
         return True
@@ -1894,7 +1897,7 @@ def is_owner():
     from :exc:`.CheckFailure`.
     """
 
-    async def predicate(ctx):
+    async def predicate(ctx: Context):
         if not await ctx.bot.is_owner(ctx.author):
             raise NotOwner('You do not own this bot.')
         return True
@@ -1912,14 +1915,14 @@ def is_nsfw():
         Raise :exc:`.NSFWChannelRequired` instead of generic :exc:`.CheckFailure`.
         DM channels will also now pass this check.
     """
-    def pred(ctx):
+    def pred(ctx: Context):
         ch = ctx.channel
         if ctx.guild is None or (isinstance(ch, discord.TextChannel) and ch.is_nsfw()):
             return True
         raise NSFWChannelRequired(ch)
     return check(pred)
 
-def cooldown(rate, per, type=BucketType.default):
+def cooldown(rate: int, per: float, type: BucketType =BucketType.default):
     """A decorator that adds a cooldown to a :class:`.Command`
 
     A cooldown allows a command to only be used a specific amount
@@ -1951,7 +1954,7 @@ def cooldown(rate, per, type=BucketType.default):
         return func
     return decorator
 
-def max_concurrency(number, per=BucketType.default, *, wait=False):
+def max_concurrency(number: int, per: BucketType=BucketType.default, *, wait: bool =False):
     """A decorator that adds a maximum concurrency to a :class:`.Command` or its subclasses.
 
     This enables you to only allow a certain number of command invocations at the same time,
