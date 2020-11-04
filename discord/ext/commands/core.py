@@ -1410,7 +1410,7 @@ def command(name: str =None, cls: Command =None, **attrs):
     if cls is None:
         cls = Command
 
-    def decorator(func: Callable[[Context], Command]):
+    def decorator(func: Callable[[Context], Command]) -> Callable[[Context], Command]:
         if isinstance(func, Command):
             raise TypeError('Callback is already a command.')
         return cls(func, name=name, **attrs)
