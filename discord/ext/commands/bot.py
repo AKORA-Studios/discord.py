@@ -32,6 +32,7 @@ import sys
 import traceback
 import re
 import types
+from typing import Callable, Mapping, List, Union
 
 import discord
 
@@ -41,6 +42,8 @@ from .context import Context
 from . import errors
 from .help import HelpCommand, DefaultHelpCommand
 from .cog import Cog
+from ... import Message
+
 
 def when_mentioned(bot, msg):
     """A callable that implements a command prefix equivalent to being mentioned.
@@ -128,7 +131,7 @@ class BotBase(GroupMixin):
 
     # internal helpers
 
-    def dispatch(self, event_name, *args, **kwargs):
+    def dispatch(self, event_name: str, *args, **kwargs):
         super().dispatch(event_name, *args, **kwargs)
         ev = 'on_' + event_name
         for event in self.extra_events.get(ev, []):
@@ -149,7 +152,7 @@ class BotBase(GroupMixin):
 
         await super().close()
 
-    async def on_command_error(self, context, exception):
+    async def on_command_error(self, context: discord.ext.commands.Context, exception):
         """|coro|
 
         The default command error handler provided by the bot.
@@ -175,7 +178,7 @@ class BotBase(GroupMixin):
 
     # global check registration
 
-    def check(self, func):
+    def check(self, func: Callable[[discord.ext.commands.Context], any]):
         r"""A decorator that adds a global check to the bot.
 
         A global check is similar to a :func:`.check` that is applied
@@ -203,7 +206,7 @@ class BotBase(GroupMixin):
         self.add_check(func)
         return func
 
-    def add_check(self, func, *, call_once=False):
+    def add_check(self, func: Callable[[discord.ext.commands.Context], any], *, call_once=False):
         """Adds a global check to the bot.
 
         This is the non-decorator interface to :meth:`.check`
@@ -223,7 +226,7 @@ class BotBase(GroupMixin):
         else:
             self._checks.append(func)
 
-    def remove_check(self, func, *, call_once=False):
+    def remove_check(self, func: Callable[[discord.ext.commands.Context], any], *, call_once=False):
         """Removes a global check from the bot.
 
         This function is idempotent and will not raise an exception
@@ -244,7 +247,7 @@ class BotBase(GroupMixin):
         except ValueError:
             pass
 
-    def check_once(self, func):
+    def check_once(self, func: Callable[[discord.ext.commands.Context], any]):
         r"""A decorator that adds a "call once" global check to the bot.
 
         Unlike regular global checks, this one is called only once
@@ -282,7 +285,7 @@ class BotBase(GroupMixin):
         self.add_check(func, call_once=True)
         return func
 
-    async def can_run(self, ctx, *, call_once=False):
+    async def can_run(self, ctx: discord.ext.commands.Context, *, call_once=False) -> bool:
         data = self._check_once if call_once else self._checks
 
         if len(data) == 0:
@@ -290,7 +293,7 @@ class BotBase(GroupMixin):
 
         return await discord.utils.async_all(f(ctx) for f in data)
 
-    async def is_owner(self, user):
+    async def is_owner(self, user: discord.User) -> bool:
         """|coro|
 
         Checks if a :class:`~discord.User` or :class:`~discord.Member` is the owner of
@@ -484,7 +487,7 @@ class BotBase(GroupMixin):
 
     # cogs
 
-    def add_cog(self, cog):
+    def add_cog(self, cog: discord.ext.commands.Cog):
         """Adds a "cog" to the bot.
 
         A cog is a class that has its own event listeners and commands.
@@ -508,7 +511,7 @@ class BotBase(GroupMixin):
         cog = cog._inject(self)
         self.__cogs[cog.__cog_name__] = cog
 
-    def get_cog(self, name):
+    def get_cog(self, name: str) -> discord.ext.commands.Cog:
         """Gets the cog instance requested.
 
         If the cog is not found, ``None`` is returned instead.
@@ -527,7 +530,7 @@ class BotBase(GroupMixin):
         """
         return self.__cogs.get(name)
 
-    def remove_cog(self, name):
+    def remove_cog(self, name: str):
         """Removes a cog from the bot.
 
         All registered commands and event listeners that the
@@ -551,7 +554,7 @@ class BotBase(GroupMixin):
         cog._eject(self)
 
     @property
-    def cogs(self):
+    def cogs(self) -> Mapping[str, discord.ext.commands.Cog]:
         """Mapping[:class:`str`, :class:`Cog`]: A read-only mapping of cog name to cog."""
         return types.MappingProxyType(self.__cogs)
 
@@ -625,7 +628,7 @@ class BotBase(GroupMixin):
         else:
             self.__extensions[key] = lib
 
-    def load_extension(self, name):
+    def load_extension(self, name: str):
         """Loads an extension.
 
         An extension is a python module that contains commands, cogs, or
@@ -663,7 +666,7 @@ class BotBase(GroupMixin):
 
         self._load_from_module_spec(spec, name)
 
-    def unload_extension(self, name):
+    def unload_extension(self, name: str):
         """Unloads an extension.
 
         When the extension is unloaded, all commands, listeners, and cogs are
@@ -694,7 +697,7 @@ class BotBase(GroupMixin):
         self._remove_module_references(lib.__name__)
         self._call_module_finalizers(lib, name)
 
-    def reload_extension(self, name):
+    def reload_extension(self, name: str):
         """Atomically reloads an extension.
 
         This replaces the extension with the same extension, only refreshed. This is
@@ -749,7 +752,7 @@ class BotBase(GroupMixin):
             raise
 
     @property
-    def extensions(self):
+    def extensions(self) -> Mapping[str, types.ModuleType]:
         """Mapping[:class:`str`, :class:`py:types.ModuleType`]: A read-only mapping of extension name to extension."""
         return types.MappingProxyType(self.__extensions)
 
@@ -776,7 +779,7 @@ class BotBase(GroupMixin):
 
     # command processing
 
-    async def get_prefix(self, message):
+    async def get_prefix(self, message: discord.Message) -> Union[List[str]]:
         """|coro|
 
         Retrieves the prefix the bot is listening to
@@ -814,7 +817,7 @@ class BotBase(GroupMixin):
 
         return ret
 
-    async def get_context(self, message, *, cls=Context):
+    async def get_context(self, message: Message, *, cls=Context) -> Context:
         r"""|coro|
 
         Returns the invocation context from the message.
@@ -885,7 +888,7 @@ class BotBase(GroupMixin):
         ctx.command = self.all_commands.get(invoker)
         return ctx
 
-    async def invoke(self, ctx):
+    async def invoke(self, ctx: Context):
         """|coro|
 
         Invokes the command given under the invocation context and
@@ -911,7 +914,7 @@ class BotBase(GroupMixin):
             exc = errors.CommandNotFound('Command "{}" is not found'.format(ctx.invoked_with))
             self.dispatch('command_error', ctx, exc)
 
-    async def process_commands(self, message):
+    async def process_commands(self, message: Message):
         """|coro|
 
         This function processes the commands that have been registered
@@ -939,7 +942,7 @@ class BotBase(GroupMixin):
         ctx = await self.get_context(message)
         await self.invoke(ctx)
 
-    async def on_message(self, message):
+    async def on_message(self, message: Message):
         await self.process_commands(message)
 
 class Bot(BotBase, discord.Client):
