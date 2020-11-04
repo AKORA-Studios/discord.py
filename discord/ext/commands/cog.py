@@ -26,6 +26,9 @@ DEALINGS IN THE SOFTWARE.
 
 import inspect
 import copy
+from typing import List, Generator, Union, Tuple
+
+from . import Command, Group, Context, CommandError, Bot
 from ._types import _BaseCommand
 
 __all__ = (
@@ -187,7 +190,7 @@ class Cog(metaclass=CogMeta):
 
         return self
 
-    def get_commands(self):
+    def get_commands(self) -> List[Command]:
         r"""
         Returns
         --------
@@ -202,12 +205,12 @@ class Cog(metaclass=CogMeta):
         return [c for c in self.__cog_commands__ if c.parent is None]
 
     @property
-    def qualified_name(self):
+    def qualified_name(self) -> str:
         """:class:`str`: Returns the cog's specified name, not the class name."""
         return self.__cog_name__
 
     @property
-    def description(self):
+    def description(self) -> str:
         """:class:`str`: Returns the cog's description, typically the cleaned docstring."""
         try:
             return self.__cog_cleaned_doc__
@@ -215,7 +218,7 @@ class Cog(metaclass=CogMeta):
             self.__cog_cleaned_doc__ = cleaned = inspect.getdoc(self)
             return cleaned
 
-    def walk_commands(self):
+    def walk_commands(self) -> Generator[Union[Command, Group]]:
         """An iterator that recursively walks through this cog's commands and subcommands.
 
         Yields
@@ -230,7 +233,7 @@ class Cog(metaclass=CogMeta):
                 if isinstance(command, GroupMixin):
                     yield from command.walk_commands()
 
-    def get_listeners(self):
+    def get_listeners(self) -> List[Tuple[str, any]]:
         """Returns a :class:`list` of (name, function) listener pairs that are defined in this cog.
 
         Returns
@@ -246,7 +249,7 @@ class Cog(metaclass=CogMeta):
         return getattr(method.__func__, '__cog_special_method__', method)
 
     @classmethod
-    def listener(cls, name=None):
+    def listener(cls, name: str =None):
         """A decorator that marks a function as a listener.
 
         This is the cog equivalent of :meth:`.Bot.listen`.
@@ -298,7 +301,7 @@ class Cog(metaclass=CogMeta):
         pass
 
     @_cog_special_method
-    def bot_check_once(self, ctx):
+    def bot_check_once(self, ctx: Context):
         """A special method that registers as a :meth:`.Bot.check_once`
         check.
 
@@ -308,7 +311,7 @@ class Cog(metaclass=CogMeta):
         return True
 
     @_cog_special_method
-    def bot_check(self, ctx):
+    def bot_check(self, ctx: Context):
         """A special method that registers as a :meth:`.Bot.check`
         check.
 
@@ -318,7 +321,7 @@ class Cog(metaclass=CogMeta):
         return True
 
     @_cog_special_method
-    def cog_check(self, ctx):
+    def cog_check(self, ctx: Context):
         """A special method that registers as a :func:`commands.check`
         for every command and subcommand in this cog.
 
@@ -328,7 +331,7 @@ class Cog(metaclass=CogMeta):
         return True
 
     @_cog_special_method
-    async def cog_command_error(self, ctx, error):
+    async def cog_command_error(self, ctx: Context, error: CommandError):
         """A special method that is called whenever an error
         is dispatched inside this cog.
 
@@ -347,7 +350,7 @@ class Cog(metaclass=CogMeta):
         pass
 
     @_cog_special_method
-    async def cog_before_invoke(self, ctx):
+    async def cog_before_invoke(self, ctx: Context):
         """A special method that acts as a cog local pre-invoke hook.
 
         This is similar to :meth:`.Command.before_invoke`.
@@ -362,7 +365,7 @@ class Cog(metaclass=CogMeta):
         pass
 
     @_cog_special_method
-    async def cog_after_invoke(self, ctx):
+    async def cog_after_invoke(self, ctx: Context):
         """A special method that acts as a cog local post-invoke hook.
 
         This is similar to :meth:`.Command.after_invoke`.
@@ -376,7 +379,7 @@ class Cog(metaclass=CogMeta):
         """
         pass
 
-    def _inject(self, bot):
+    def _inject(self, bot: Bot):
         cls = self.__class__
 
         # realistically, the only thing that can cause loading errors
@@ -410,7 +413,7 @@ class Cog(metaclass=CogMeta):
 
         return self
 
-    def _eject(self, bot):
+    def _eject(self, bot: Bot):
         cls = self.__class__
 
         try:
