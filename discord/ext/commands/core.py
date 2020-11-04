@@ -1377,7 +1377,7 @@ class Group(GroupMixin, Command):
 
 # Decorators
 
-def command(name: str =None, cls=None, **attrs):
+def command(name: str =None, cls: Command =None, **attrs):
     """A decorator that transforms a function into a :class:`.Command`
     or if called with :func:`.group`, :class:`.Group`.
 
@@ -1410,7 +1410,7 @@ def command(name: str =None, cls=None, **attrs):
     if cls is None:
         cls = Command
 
-    def decorator(func):
+    def decorator(func: Callable[[Context], Command]):
         if isinstance(func, Command):
             raise TypeError('Callback is already a command.')
         return cls(func, name=name, **attrs)
