@@ -71,12 +71,12 @@ class Context(discord.abc.Messageable):
     """
 
     def __init__(self, **attrs):
-        self.message = attrs.pop('message', None)
-        self.bot = attrs.pop('bot', None)
-        self.args = attrs.pop('args', [])
-        self.kwargs = attrs.pop('kwargs', {})
-        self.prefix = attrs.pop('prefix')
-        self.command = attrs.pop('command', None)
+        self.message: .Message = attrs.pop('message', None)
+        self.bot: .Bot = attrs.pop('bot', None)
+        self.args: list = attrs.pop('args', [])
+        self.kwargs: dict = attrs.pop('kwargs', {})
+        self.prefix: str = attrs.pop('prefix')
+        self.command: Command = attrs.pop('command', None)
         self.view = attrs.pop('view', None)
         self.invoked_with = attrs.pop('invoked_with', None)
         self.invoked_subcommand = attrs.pop('invoked_subcommand', None)
