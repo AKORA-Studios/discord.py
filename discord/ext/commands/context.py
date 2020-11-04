@@ -26,7 +26,6 @@ DEALINGS IN THE SOFTWARE.
 
 import discord.abc
 import discord.utils
-from typing import Optional, Union
 
 class Context(discord.abc.Messageable):
     r"""Represents the context in which a command is being invoked under.
@@ -72,17 +71,17 @@ class Context(discord.abc.Messageable):
     """
 
     def __init__(self, **attrs):
-        self.message: discord.Message = attrs.pop('message', None)
-        self.bot: discord.ext.commands.Bot = attrs.pop('bot', None)
+        self.message: .Message = attrs.pop('message', None)
+        self.bot: .Bot = attrs.pop('bot', None)
         self.args: list = attrs.pop('args', [])
         self.kwargs: dict = attrs.pop('kwargs', {})
         self.prefix: str = attrs.pop('prefix')
-        self.command: discord.ext.commands.Command = attrs.pop('command', None)
+        self.command: Command = attrs.pop('command', None)
         self.view = attrs.pop('view', None)
-        self.invoked_with: str = attrs.pop('invoked_with', None)
-        self.invoked_subcommand: discord.ext.commands.Command = attrs.pop('invoked_subcommand', None)
-        self.subcommand_passed: Optional[str] = attrs.pop('subcommand_passed', None)
-        self.command_failed: bool = attrs.pop('command_failed', False)
+        self.invoked_with = attrs.pop('invoked_with', None)
+        self.invoked_subcommand = attrs.pop('invoked_subcommand', None)
+        self.subcommand_passed = attrs.pop('subcommand_passed', None)
+        self.command_failed = attrs.pop('command_failed', False)
         self._state = self.message._state
 
     async def invoke(self, *args, **kwargs):
@@ -196,7 +195,7 @@ class Context(discord.abc.Messageable):
             self.subcommand_passed = subcommand_passed
 
     @property
-    def valid(self) -> bool:
+    def valid(self):
         """:class:`bool`: Checks if the invocation context is valid to be invoked with."""
         return self.prefix is not None and self.command is not None
 
@@ -204,7 +203,7 @@ class Context(discord.abc.Messageable):
         return self.channel
 
     @property
-    def cog(self) -> discord.ext.commands.Cog:
+    def cog(self):
         """:class:`.Cog`: Returns the cog associated with this context's command. None if it does not exist."""
 
         if self.command is None:
@@ -212,33 +211,33 @@ class Context(discord.abc.Messageable):
         return self.command.cog
 
     @discord.utils.cached_property
-    def guild(self) -> Optional[discord.Guild]:
+    def guild(self):
         """Optional[:class:`.Guild`]: Returns the guild associated with this context's command. None if not available."""
         return self.message.guild
 
     @discord.utils.cached_property
-    def channel(self) -> discord.TextChannel:
+    def channel(self):
         """:class:`.TextChannel`:
         Returns the channel associated with this context's command. Shorthand for :attr:`.Message.channel`.
         """
         return self.message.channel
 
     @discord.utils.cached_property
-    def author(self) -> Union[discord.User, discord.Member]:
+    def author(self):
         """Union[:class:`~discord.User`, :class:`.Member`]:
         Returns the author associated with this context's command. Shorthand for :attr:`.Message.author`
         """
         return self.message.author
 
     @discord.utils.cached_property
-    def me(self) -> Union[discord.member, discord.ClientUser]:
+    def me(self):
         """Union[:class:`.Member`, :class:`.ClientUser`]:
         Similar to :attr:`.Guild.me` except it may return the :class:`.ClientUser` in private message contexts.
         """
         return self.guild.me if self.guild is not None else self.bot.user
 
     @property
-    def voice_client(self) -> Optional[discord.VoiceProtocol]:
+    def voice_client(self):
         r"""Optional[:class:`.VoiceProtocol`]: A shortcut to :attr:`.Guild.voice_client`\, if applicable."""
         g = self.guild
         return g.voice_client if g else None
