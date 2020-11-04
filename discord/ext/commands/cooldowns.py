@@ -29,6 +29,7 @@ import time
 import asyncio
 from collections import deque
 
+from ... import Message
 from ...abc import PrivateChannel
 from .errors import MaxConcurrencyReached
 
@@ -70,9 +71,9 @@ class BucketType(Enum):
 class Cooldown:
     __slots__ = ('rate', 'per', 'type', '_window', '_tokens', '_last')
 
-    def __init__(self, rate, per, type):
-        self.rate = int(rate)
-        self.per = float(per)
+    def __init__(self, rate: int, per: float, type):
+        self.rate: int = int(rate)
+        self.per: float = float(per)
         self.type = type
         self._window = 0.0
         self._tokens = self.rate
@@ -81,7 +82,7 @@ class Cooldown:
         if not isinstance(self.type, BucketType):
             raise TypeError('Cooldown type must be a BucketType')
 
-    def get_tokens(self, current=None):
+    def get_tokens(self, current: float=None):
         if not current:
             current = time.time()
 
@@ -91,7 +92,7 @@ class Cooldown:
             tokens = self.rate
         return tokens
 
-    def get_retry_after(self, current=None):
+    def get_retry_after(self, current: float=None) -> float:
         current = current or time.time()
         tokens = self.get_tokens(current)
 
@@ -100,7 +101,7 @@ class Cooldown:
 
         return 0.0
 
-    def update_rate_limit(self, current=None):
+    def update_rate_limit(self, current: float=None):
         current = current or time.time()
         self._last = current
 
@@ -260,10 +261,10 @@ class MaxConcurrency:
     def __repr__(self):
         return '<MaxConcurrency per={0.per!r} number={0.number} wait={0.wait}>'.format(self)
 
-    def get_key(self, message):
+    def get_key(self, message: Message):
         return self.per.get_key(message)
 
-    async def acquire(self, message):
+    async def acquire(self, message: Message):
         key = self.get_key(message)
 
         try:
@@ -275,7 +276,7 @@ class MaxConcurrency:
         if not acquired:
             raise MaxConcurrencyReached(self.number, self.per)
 
-    async def release(self, message):
+    async def release(self, message: Message):
         # Technically there's no reason for this function to be async
         # But it might be more useful in the future
         key = self.get_key(message)

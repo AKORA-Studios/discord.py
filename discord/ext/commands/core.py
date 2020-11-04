@@ -28,13 +28,14 @@ import asyncio
 import functools
 import inspect
 import typing
+from typing import Optional, List, Union, OrderedDict, Set, Callable
 import datetime
 
 import discord
 
 from .errors import *
 from .cooldowns import Cooldown, BucketType, CooldownMapping, MaxConcurrency
-from . import converter as converters
+from . import converter as converters, check, Context, Converter, Command, Group
 from ._types import _BaseCommand
 from .cog import Cog
 
@@ -221,7 +222,7 @@ class Command(_BaseCommand):
             raise TypeError('Name of a command must be a string.')
 
         self.callback = func
-        self.enabled = kwargs.get('enabled', True)
+        self.enabled: bool = kwargs.get('enabled', True)
 
         help_doc = kwargs.get('help')
         if help_doc is not None:
@@ -312,7 +313,7 @@ class Command(_BaseCommand):
             if value.annotation is converters.Greedy:
                 raise TypeError('Unparameterized Greedy[...] is disallowed in signature.')
 
-    def add_check(self, func):
+    def add_check(self, func: check):
         """Adds a check to the command.
 
         This is the non-decorator interface to :func:`.check`.
@@ -327,7 +328,7 @@ class Command(_BaseCommand):
 
         self.checks.append(func)
 
-    def remove_check(self, func):
+    def remove_check(self, func: check):
         """Removes a check from the command.
 
         This function is idempotent and will not raise an exception
@@ -409,7 +410,7 @@ class Command(_BaseCommand):
         else:
             return self.copy()
 
-    async def dispatch_error(self, ctx, error):
+    async def dispatch_error(self, ctx: Context, error):
         ctx.command_failed = True
         cog = self.cog
         try:
@@ -432,7 +433,7 @@ class Command(_BaseCommand):
         finally:
             ctx.bot.dispatch('command_error', ctx, error)
 
-    async def _actual_conversion(self, ctx, converter, argument, param):
+    async def _actual_conversion(self, ctx: Context, converter: Converter, argument: str, param) -> bool:
         if converter is bool:
             return _convert_to_bool(argument)
 
@@ -475,7 +476,7 @@ class Command(_BaseCommand):
 
             raise BadArgument('Converting to "{}" failed for parameter "{}".'.format(name, param.name)) from exc
 
-    async def do_conversion(self, ctx, converter, argument, param):
+    async def do_conversion(self, ctx: Context, converter: Converter, argument: str, param) -> typing.Optional[bool]:
         try:
             origin = converter.__origin__
         except AttributeError:
@@ -513,7 +514,7 @@ class Command(_BaseCommand):
                 converter = str
         return converter
 
-    async def transform(self, ctx, param):
+    async def transform(self, ctx: Context, param) -> typing.Union[typing.List[typing.Optional[bool]], bool, None]:
         required = param.default is param.empty
         converter = self._get_converter(param)
         consume_rest_is_special = param.kind == param.KEYWORD_ONLY and not self.rest_is_raw
@@ -551,7 +552,7 @@ class Command(_BaseCommand):
 
         return await self.do_conversion(ctx, converter, argument, param)
 
-    async def _transform_greedy_pos(self, ctx, param, required, converter):
+    async def _transform_greedy_pos(self, ctx: Context, param, required, converter: Converter) ->  List[Optional[bool]]:
         view = ctx.view
         result = []
         while not view.eof:
@@ -585,7 +586,7 @@ class Command(_BaseCommand):
             return value
 
     @property
-    def clean_params(self):
+    def clean_params(self) -> OrderedDict[str, inspect.Parameter]:
         """OrderedDict[:class:`str`, :class:`inspect.Parameter`]:
         Retrieves the parameter OrderedDict without the context or self parameters.
 
@@ -605,7 +606,7 @@ class Command(_BaseCommand):
         return result
 
     @property
-    def full_parent_name(self):
+    def full_parent_name(self) -> str:
         """:class:`str`: Retrieves the fully qualified parent command name.
 
         This the base command name required to execute it. For example,
@@ -620,7 +621,7 @@ class Command(_BaseCommand):
         return ' '.join(reversed(entries))
 
     @property
-    def parents(self):
+    def parents(self) -> List[Command]:
         """List[:class:`Command`]: Retrieves the parents of this command.
 
         If the command has no parents then it returns an empty :class:`list`.
@@ -638,7 +639,7 @@ class Command(_BaseCommand):
         return entries
 
     @property
-    def root_parent(self):
+    def root_parent(self) -> Optional[Command]:
         """Optional[:class:`Command`]: Retrieves the root parent of this command.
 
         If the command has no parents then it returns ``None``.
@@ -650,7 +651,7 @@ class Command(_BaseCommand):
         return self.parents[-1]
 
     @property
-    def qualified_name(self):
+    def qualified_name(self) -> str:
         """:class:`str`: Retrieves the fully qualified command name.
 
         This is the full parent name with the command name as well.
@@ -667,7 +668,7 @@ class Command(_BaseCommand):
     def __str__(self):
         return self.qualified_name
 
-    async def _parse_arguments(self, ctx):
+    async def _parse_arguments(self, ctx: Context):
         ctx.args = [ctx] if self.cog is None else [self.cog, ctx]
         ctx.kwargs = {}
         args = ctx.args
@@ -719,7 +720,7 @@ class Command(_BaseCommand):
             if not view.eof:
                 raise TooManyArguments('Too many arguments passed to ' + self.qualified_name)
 
-    async def call_before_hooks(self, ctx):
+    async def call_before_hooks(self, ctx: Context) -> None:
         # now that we're done preparing we can call the pre-command hooks
         # first, call the command local hook:
         cog = self.cog
@@ -744,7 +745,7 @@ class Command(_BaseCommand):
         if hook is not None:
             await hook(ctx)
 
-    async def call_after_hooks(self, ctx):
+    async def call_after_hooks(self, ctx: Context) -> None:
         cog = self.cog
         if self._after_invoke is not None:
             instance = getattr(self._after_invoke, '__self__', cog)
@@ -763,7 +764,7 @@ class Command(_BaseCommand):
         if hook is not None:
             await hook(ctx)
 
-    def _prepare_cooldowns(self, ctx):
+    def _prepare_cooldowns(self, ctx: Context) -> None:
         if self._buckets.valid:
             dt = ctx.message.edited_at or ctx.message.created_at
             current = dt.replace(tzinfo=datetime.timezone.utc).timestamp()
@@ -772,7 +773,7 @@ class Command(_BaseCommand):
             if retry_after:
                 raise CommandOnCooldown(bucket, retry_after)
 
-    async def prepare(self, ctx):
+    async def prepare(self, ctx: Context) -> None:
         ctx.command = self
 
         if not await self.can_run(ctx):
@@ -790,7 +791,7 @@ class Command(_BaseCommand):
 
         await self.call_before_hooks(ctx)
 
-    def is_on_cooldown(self, ctx):
+    def is_on_cooldown(self, ctx: Context) -> bool:
         """Checks whether the command is currently on cooldown.
 
         Parameters
@@ -811,7 +812,7 @@ class Command(_BaseCommand):
         current = dt.replace(tzinfo=datetime.timezone.utc).timestamp()
         return bucket.get_tokens(current) == 0
 
-    def reset_cooldown(self, ctx):
+    def reset_cooldown(self, ctx: Context):
         """Resets the cooldown on this command.
 
         Parameters
@@ -823,7 +824,7 @@ class Command(_BaseCommand):
             bucket = self._buckets.get_bucket(ctx.message)
             bucket.reset()
 
-    def get_cooldown_retry_after(self, ctx):
+    def get_cooldown_retry_after(self, ctx: Context) -> float:
         """Retrieves the amount of seconds before this command can be tried again.
 
         .. versionadded:: 1.4
@@ -847,7 +848,7 @@ class Command(_BaseCommand):
 
         return 0.0
 
-    async def invoke(self, ctx):
+    async def invoke(self, ctx: Context) -> None:
         await self.prepare(ctx)
 
         # terminate the invoked_subcommand chain.
@@ -858,7 +859,7 @@ class Command(_BaseCommand):
         injected = hooked_wrapped_callback(self, ctx, self.callback)
         await injected(*ctx.args, **ctx.kwargs)
 
-    async def reinvoke(self, ctx, *, call_hooks=False):
+    async def reinvoke(self, ctx: Context, *, call_hooks=False):
         ctx.command = self
         await self._parse_arguments(ctx)
 
@@ -959,7 +960,7 @@ class Command(_BaseCommand):
         return type(self.cog).__cog_name__ if self.cog is not None else None
 
     @property
-    def short_doc(self):
+    def short_doc(self) -> str:
         """:class:`str`: Gets the "short" documentation of a command.
 
         By default, this is the :attr:`brief` attribute.
@@ -984,7 +985,7 @@ class Command(_BaseCommand):
         return annotation.__args__[-1] is type(None)
 
     @property
-    def signature(self):
+    def signature(self) -> str:
         """:class:`str`: Returns a POSIX-like signature useful for help command output."""
         if self.usage is not None:
             return self.usage
@@ -1023,7 +1024,7 @@ class Command(_BaseCommand):
 
         return ' '.join(result)
 
-    async def can_run(self, ctx):
+    async def can_run(self, ctx: Context) -> bool:
         """|coro|
 
         Checks if the command can be executed by checking all the predicates
@@ -1090,13 +1091,13 @@ class GroupMixin:
         Whether the commands should be case insensitive. Defaults to ``False``.
     """
     def __init__(self, *args, **kwargs):
-        case_insensitive = kwargs.get('case_insensitive', False)
-        self.all_commands = _CaseInsensitiveDict() if case_insensitive else {}
+        case_insensitive: bool = kwargs.get('case_insensitive', False)
+        self.all_commands: dict = _CaseInsensitiveDict() if case_insensitive else {}
         self.case_insensitive = case_insensitive
         super().__init__(*args, **kwargs)
 
     @property
-    def commands(self):
+    def commands(self) -> Set[Command]:
         """Set[:class:`.Command`]: A unique set of commands without aliases that are registered."""
         return set(self.all_commands.values())
 
@@ -1106,7 +1107,7 @@ class GroupMixin:
                 command.recursively_remove_all_commands()
             self.remove_command(command.name)
 
-    def add_command(self, command):
+    def add_command(self, command: Command):
         """Adds a :class:`.Command` into the internal list of commands.
 
         This is usually not called, instead the :meth:`~.GroupMixin.command` or
@@ -1143,7 +1144,7 @@ class GroupMixin:
                 raise CommandRegistrationError(alias, alias_conflict=True)
             self.all_commands[alias] = command
 
-    def remove_command(self, name):
+    def remove_command(self, name: str) -> Optional[Command]:
         """Remove a :class:`.Command` from the internal list
         of commands.
 
@@ -1191,7 +1192,7 @@ class GroupMixin:
             if isinstance(command, GroupMixin):
                 yield from command.walk_commands()
 
-    def get_command(self, name):
+    def get_command(self, name: str) ->  Optional[Command]:
         """Get a :class:`.Command` from the internal list
         of commands.
 
@@ -1231,7 +1232,7 @@ class GroupMixin:
 
         return obj
 
-    def command(self, *args, **kwargs):
+    def command(self, *args, **kwargs) -> Callable[..., Command]:
         """A shortcut decorator that invokes :func:`.command` and adds it to
         the internal command list via :meth:`~.GroupMixin.add_command`.
 
@@ -1248,7 +1249,7 @@ class GroupMixin:
 
         return decorator
 
-    def group(self, *args, **kwargs):
+    def group(self, *args, **kwargs) -> Callable[..., Group]:
         """A shortcut decorator that invokes :func:`.group` and adds it to
         the internal command list via :meth:`~.GroupMixin.add_command`.
 
@@ -1288,10 +1289,10 @@ class Group(GroupMixin, Command):
         Defaults to ``False``.
     """
     def __init__(self, *args, **attrs):
-        self.invoke_without_command = attrs.pop('invoke_without_command', False)
+        self.invoke_without_command: bool = attrs.pop('invoke_without_command', False)
         super().__init__(*args, **attrs)
 
-    def copy(self):
+    def copy(self) -> Group:
         """Creates a copy of this :class:`Group`.
 
         Returns
@@ -1304,7 +1305,7 @@ class Group(GroupMixin, Command):
             ret.add_command(cmd.copy())
         return ret
 
-    async def invoke(self, ctx):
+    async def invoke(self, ctx: Context):
         ctx.invoked_subcommand = None
         ctx.subcommand_passed = None
         early_invoke = not self.invoke_without_command
@@ -1333,7 +1334,7 @@ class Group(GroupMixin, Command):
             view.previous = previous
             await super().invoke(ctx)
 
-    async def reinvoke(self, ctx, *, call_hooks=False):
+    async def reinvoke(self, ctx: Context, *, call_hooks=False):
         ctx.invoked_subcommand = None
         early_invoke = not self.invoke_without_command
         if early_invoke:
@@ -1373,7 +1374,7 @@ class Group(GroupMixin, Command):
 
 # Decorators
 
-def command(name=None, cls=None, **attrs):
+def command(name: str =None, cls=None, **attrs):
     """A decorator that transforms a function into a :class:`.Command`
     or if called with :func:`.group`, :class:`.Group`.
 
@@ -1413,7 +1414,7 @@ def command(name=None, cls=None, **attrs):
 
     return decorator
 
-def group(name=None, **attrs):
+def group(name: str =None, **attrs):
     """A decorator that transforms a function into a :class:`.Group`.
 
     This is similar to the :func:`.command` decorator but the ``cls``
