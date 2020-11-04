@@ -1235,7 +1235,7 @@ class GroupMixin:
 
         return obj
 
-    def command(self, *args, **kwargs) -> Callable[..., Command]:
+    def command(self, *args, **kwargs) -> Callable[[Context], Command]:
         """A shortcut decorator that invokes :func:`.command` and adds it to
         the internal command list via :meth:`~.GroupMixin.add_command`.
 
@@ -1244,7 +1244,7 @@ class GroupMixin:
         Callable[..., :class:`Command`]
             A decorator that converts the provided method into a Command, adds it to the bot, then returns it.
         """
-        def decorator(func):
+        def decorator(func: Callable[[Context], Command]):
             kwargs.setdefault('parent', self)
             result = command(*args, **kwargs)(func)
             self.add_command(result)

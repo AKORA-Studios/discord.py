@@ -4,6 +4,8 @@ import discord
 from discord.ext import commands
 import random
 
+from discord.ext.commands import Context
+
 description = '''An example bot to showcase the discord.ext.commands extension
 module.
 
@@ -27,7 +29,7 @@ async def add(ctx, left: int, right: int):
     await ctx.send(left + right)
 
 @bot.command()
-async def roll(ctx, dice: str):
+async def roll(ctx: Context, dice: str):
     """Rolls a dice in NdN format."""
     try:
         rolls, limit = map(int, dice.split('d'))
