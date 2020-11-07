@@ -24,9 +24,8 @@ async def on_ready():
     print('------')
 
 @commands.command()
-async def add(ctx, left: int, right: int):
-    """Adds two numbers together."""
-    await ctx.send(left + right)
+async def ping(ctx: Context):
+    await ctx.send("PONG")
 
 @bot.command()
 async def roll(ctx, dice: str):
