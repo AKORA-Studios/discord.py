@@ -29,9 +29,11 @@ import logging
 import signal
 import sys
 import traceback
+from typing import List, Sequence
 
 import aiohttp
 
+from .abc import PrivateChannel
 from .user import User, Profile
 from .asset import Asset
 from .invite import Invite
@@ -46,10 +48,10 @@ from .errors import *
 from .enums import Status, VoiceRegion
 from .gateway import *
 from .activity import BaseActivity, create_activity
-from .voice_client import VoiceClient
+from .voice_client import VoiceClient, VoiceProtocol
 from .http import HTTPClient
 from .state import ConnectionState
-from . import utils
+from . import utils, Emoji, Message
 from .object import Object
 from .backoff import ExponentialBackoff
 from .webhook import Webhook
@@ -288,17 +290,17 @@ class Client:
         return self._connection.user
 
     @property
-    def guilds(self):
+    def guilds(self) -> List[Guild]:
         """List[:class:`.Guild`]: The guilds that the connected client is a member of."""
         return self._connection.guilds
 
     @property
-    def emojis(self):
+    def emojis(self) -> List[Emoji]:
         """List[:class:`.Emoji`]: The emojis that the connected client has."""
         return self._connection.emojis
 
     @property
-    def cached_messages(self):
+    def cached_messages(self) -> Sequence[Message]:
         """Sequence[:class:`.Message`]: Read-only list of messages the connected client has cached.
 
         .. versionadded:: 1.1
@@ -306,7 +308,7 @@ class Client:
         return utils.SequenceProxy(self._connection._messages or [])
 
     @property
-    def private_channels(self):
+    def private_channels(self) -> List[PrivateChannel]:
         """List[:class:`.abc.PrivateChannel`]: The private channels that the connected client is participating on.
 
         .. note::
@@ -317,7 +319,7 @@ class Client:
         return self._connection.private_channels
 
     @property
-    def voice_clients(self):
+    def voice_clients(self) -> List[VoiceProtocol]:
         """List[:class:`.VoiceProtocol`]: Represents a list of voice connections.
 
         These are usually :class:`.VoiceClient` instances.

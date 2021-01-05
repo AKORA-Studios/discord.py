@@ -26,6 +26,7 @@ DEALINGS IN THE SOFTWARE.
 
 import asyncio
 from collections import deque, OrderedDict
+from typing import Optional, List, Union, Set, Callable
 import copy
 import datetime
 import itertools
@@ -196,9 +197,9 @@ class ConnectionState:
     def clear(self):
         self.user = None
         self._users = weakref.WeakValueDictionary()
-        self._emojis = {}
+        self._emojis: List[Emoji] = {}
         self._calls = {}
-        self._guilds = {}
+        self._guilds: List[Guild] = {}
         self._voice_clients = {}
 
         # LRU of max size 128
